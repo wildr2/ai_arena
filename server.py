@@ -10,6 +10,9 @@ class User:
 		
 	def is_valid_username(username):
 		return username and len(username) > 0 and len(username) <= 16
+	
+	def is_ready(self):
+		return self.chr.is_ready()
 
 class Game:
 	def __init__(self):
@@ -34,8 +37,11 @@ class Game:
 
 		return None
 	
+	def get_ready_users(self):
+		return [user for user in self.users.values() if user.is_ready()]
+	
 	def get_ready_users_count(self):
-		return len([user for user in self.users.values() if user.chr.desc])
+		return len(self.get_ready_users())
 
 	def fight(self):
 		self.fight_desc = gen_fight_desc([user.chr for user in self.users.values()])
@@ -60,7 +66,7 @@ class Game:
 		return jsonify({
 			"status": "arena",
 			"chr_desc": chr_desc,
-			"ready": self.get_ready_users_count(),
+			"ready_users": {user.username: user.chr.name for user in self.get_ready_users()},
 			"max": self.max_users,
 			"fight_desc": self.fight_desc
 		})
@@ -70,9 +76,9 @@ game = Game()
 
 app = Flask(__name__)
 cors = CORS(app)
-app.config['CORS_HEADERS'] = 'Content-Type'
+app.config["CORS_HEADERS"] = "Content-Type"
 
-@app.route('/connect', methods=['POST'])
+@app.route("/connect", methods=["POST"])
 @cross_origin()
 def connect():
 	global game
@@ -95,12 +101,12 @@ def connect():
 
 	user = game.add_get_user(username)
 
-	if user and not user.chr.is_ready():
+	if user and not user.chr.is_submitted():
 		return game.get_response_creation(user)
 	else:
 		return game.get_response_arena(user)
 
-@app.route('/create-character', methods=['POST'])
+@app.route("/create-character", methods=["POST"])
 @cross_origin()
 def create_character():
 	global game
@@ -130,6 +136,7 @@ def create_character():
 			"error": "Received invalid character creation data."
 		})
 
+	user.chr.name = "Name"
 	user.chr.desc = gen_chr_desc(user.chr)
 
 	if game.get_ready_users_count() == game.max_users:
@@ -137,5 +144,5 @@ def create_character():
 
 	return game.get_response_arena(user)
 
-if __name__ == '__main__':
-	app.run(host='0.0.0.0', port=5000)
+if __name__ == "__main__":
+	app.run(host="0.0.0.0", port=5000)

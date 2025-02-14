@@ -175,7 +175,7 @@
 				<p data-template="{chr_desc}"></p>
 			</div>
 			<div class="server-stats">
-				<p data-template="{ready}/{max} contestants have entered the arena"></p>
+				<p data-template="{ready_users_count}/{max} contestants have entered the arena"></p>
 			</div>
 			<div class="fight-desc">
 				<p data-template="{fight_desc}"></p>
@@ -324,16 +324,17 @@
 			document.getElementById("arena").style.display = "none";
 			
 			creationData = data;
+
+			const parentDiv = document.getElementById("traitGroupContainer");
+			parentDiv.innerHTML = ""
 			for (let trait_type in data.trait_offers) {
-				showTraitOffer(data.trait_offers[trait_type])
+				showTraitOffer(data.trait_offers[trait_type], parentDiv)
 			}
+
 			updateSubmitChrBtn();
 		}
 
-		function showTraitOffer(offer) {
-			const parent = document.getElementById("traitGroupContainer");
-			parent.innerHTML = ""
-
+		function showTraitOffer(offer, parentDiv) {
 			// Create new header
 			const header = document.createElement("h2");
 			header.id = `${offer.name}Header`;
@@ -345,8 +346,8 @@
 			group.className = "trait-group";
 
 			// Add header and group to creation div
-			parent.appendChild(header);
-			parent.appendChild(group);
+			parentDiv.appendChild(header);
+			parentDiv.appendChild(group);
 
 			// Populate with traits
 			offer.traits.forEach((trait, index) => {
@@ -393,6 +394,8 @@
 			document.querySelector(".connect-container").style.display = "none";
 			document.getElementById("characterCreation").style.display = "none";
 			document.getElementById("arena").style.display = "block";
+			templateData = data
+			templateData["ready_users_count"] = Object.keys(data["ready_users"]).length
 			updateTemplate(".chr-desc p", data);
 			updateTemplate(".server-stats p", data);
 			updateTemplate(".fight-desc p", data);
