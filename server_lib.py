@@ -6,13 +6,14 @@ from pprint import pprint, pformat
 import random
 import pickle
 
+chr_count = 2
 ollama_model_name = "llama3.2:3b-instruct-q4_K_M"
 # ollama_model_name = "llama3.1:8b-instruct-q4_K_M"
 model_context_length = 1024
-debug_no_model = False
 debug_log = False
-
-chr_count = 2
+debug_no_model = False
+use_dummy_trait_data = True
+dummy_trait_data_path = "dummy_data/dummy_trait_pool.pkl"
 
 prompt_chr_desc = """{0}\n\nThe above describes a character that will be forced to fight in the arena, despite having limited if any fighting experience. In second person tense, give the character a name (not too pretentious) and provide a concise summary of their abilities, weaknesses, and equipment."""
 
@@ -98,7 +99,7 @@ def gen_traits(trait_type, total_start_time):
 
 	return traits
 	
-def gen_chr_desc(chr, debug_log_header):
+def gen_chr_desc(chr):
 	if debug_no_model:
 		return "You are..."
 	
@@ -112,7 +113,7 @@ def gen_chr_desc(chr, debug_log_header):
 	elapsed = time.time() - start_time 
 
 	if debug_log:
-		log_header(f"{debug_log_header} {time.strftime('%H:%M:%S', time.gmtime(elapsed))}")
+		log_header(f"Character Description {time.strftime('%H:%M:%S', time.gmtime(elapsed))}")
 		print(content)
 		log_header("")
 	
@@ -141,6 +142,12 @@ def gen_fight_desc(chrs):
 		log_header("")
 	
 	return content
+
+def create_trait_pool():
+	if use_dummy_trait_data:
+		return TraitPool.deserialize(open(dummy_trait_data_path, "rb"))
+	else:
+		return TraitPool()
 
 class Trait:
 	def __init__(self, desc):
@@ -206,6 +213,9 @@ class Character:
 		}
 		self.picks = {trait_type: [] for trait_type in trait_types}
 		self.desc = ""
+
+	def is_ready(self):
+		return all(len(self.picks[tt]) == tt.pick_count for tt in trait_types)
 
 	def get_chr_sheet(self):
 		sheet = ""

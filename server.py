@@ -1,63 +1,72 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
+from server_lib import *
 
 class User:
 	def __init__(self, username):
+		assert User.is_valid_username(username)
 		self.username = username
-		self.chr_submitted = False
-		self.chr_desc = ""
+		self.chr = Character(game.trait_pool)
+		
+	def is_valid_username(username):
+		return username and len(username) > 0 and len(username) <= 16
 
 class Game:
 	def __init__(self):
+		self.trait_pool = create_trait_pool()
 		self.users = {}
-		self.max_users = 3
-		self.arena_desc = ""
+		self.max_users = chr_count
+		self.fight_desc = ""
 
 	def get_user(self, username):
 		return self.users.get(username, None)
 
 	def add_get_user(self, username):
-		if username and len(username) > 0:
+		if User.is_valid_username(username):
 			if username in self.users:
 				return self.users[username]
 
 			if len(self.users) < self.max_users:
 				user = User(username)
 				self.users[username] = user
-				if self.get_ready_count() == self.max_users:
-					self.arena_desc = "The crowd goes wild..."
 				return user
 
 		return None
 	
-	def get_ready_count(self):
-		return len(self.users)
+	def get_ready_users_count(self):
+		return len([user for user in self.users if user.chr.desc]) > self.max_users
 
-	def get_response_creation(self):
+	def fight(self):
+		self.fight_desc = gen_fight_desc([user.chr for user in self.users])
+
+	def get_response_creation(self, user):
+		trait_offers = {
+			trait_type.name: {
+				"name": trait_type.name,
+				"plural_name": trait_type.plural_name,
+				"pick_count": trait_type.pick_count,
+				"traits": [trait.desc for trait in user.chr.offers[trait_type]]
+			}
+			for trait_type in trait_types
+		}
 		return jsonify({
 			"status": "creation",
-			"ability_options": ["You are all powerful", "You can sing pretty well", "You can change hair color at will, but only when it is raining."],
-			"weakness_options": ["You are allergic to peanuts", "You are blind"],
-			"item_options": ["A pineapple", "A sturdy wooden shield"],
-			"ability_pick_count": 1,
-			"weakness_pick_count": 1,
-			"item_pick_count": 1
+			"trait_offers": trait_offers
 		})
 	
 	def get_response_arena(self, user):
-		ready = self.get_ready_count()
-		user_desc = user.chr_desc if user else "You are a spectator."
+		ready = self.get_ready_users_count()
+		chr_desc = user.chr.desc if user else "You are a spectator."
 		return jsonify({
 			"status": "arena",
-			"chr_desc": user_desc,
+			"chr_desc": chr_desc,
 			"ready": ready,
 			"max": self.max_users,
-			"arena_desc": self.arena_desc
+			"fight_desc": self.fight_desc
 		})
 
 
 game = Game()
-
 
 app = Flask(__name__)
 cors = CORS(app)
@@ -69,10 +78,20 @@ def connect():
 	global game
 	data = request.json
 	username = data.get("username")
+
+	if username == "":
+		# Spectator.
+		return game.get_response_arena(None)
+
+	if not User.is_valid_username(username):
+		return jsonify({
+			"status": "invalid_username"
+		})
+
 	user = game.add_get_user(username)
 
-	if user and not user.chr_submitted:
-		return game.get_response_creation()
+	if user and not user.chr.is_ready():
+		return game.get_response_creation(user)
 	else:
 		return game.get_response_arena(user)
 
@@ -81,11 +100,15 @@ def connect():
 def create_character():
 	global game
 	data = request.json
+
 	username = data.get("username")
 	user = game.get_user(username)
 	if user:
-		user.chr_submitted = True
-		user.chr_desc = f"You are {username}..."
+		user.chr.desc = gen_chr_desc(user.chr)
+
+		if game.get_ready_users_count() == game.max_users:
+			game.fight()
+
 	return game.get_response_arena(user)
 
 if __name__ == '__main__':

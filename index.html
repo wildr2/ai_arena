@@ -221,8 +221,8 @@
 			<div class="server-stats">
 				<p data-template="{ready}/{max} contestants have entered the arena"></p>
 			</div>
-			<div class="arena-desc">
-				<p data-template="{arena_desc}"></p>
+			<div class="fight-desc">
+				<p data-template="{fight_desc}"></p>
 			</div>
 			<button onclick="logOut()" class="logout-button">Logout</button>
 		</div>
@@ -290,6 +290,10 @@
 					case "arena":
 						saveConnection(serverUrl, username);
 						showArena(data);
+						break;
+					case "invalid_username":
+						logOut();
+						alert("Invalid username. Usernames must be between 1 and 16 characters.");
 						break;
 					default:
 						logOut();
@@ -361,34 +365,32 @@
 			document.getElementById('arena').style.display = 'none';
 			
 			creationData = data;
-
-			showCharacterCreationTrait("ability", "abilities", data.ability_pick_count, data.ability_options)
-			showCharacterCreationTrait("weakness", "weaknesses", data.weakness_pick_count, data.weakness_options)
-			showCharacterCreationTrait("item", "items", data.item_pick_count, data.item_options)
-
+			for (let trait_type in data.trait_offers) {
+				showTraitOffer(data.trait_offers[trait_type])
+			}
 			updateSubmitChrBtn();
 		}
 
-		function showCharacterCreationTrait(traitType, traitTypePlural, pickCount, traitDescs) {
+		function showTraitOffer(offer) {
 			let templateData = {
-				pickCount: pickCount,
-				traitType: pickCount == 1 ? traitType : traitTypePlural
+				pickCount: offer.pick_count,
+				traitType: offer.pick_count == 1 ? offer.name : offer.plural_name
 			}
-			updateTemplate(`#${traitType}Header`, templateData);
+			updateTemplate(`#${offer.name}Header`, templateData);
 			
 			// Clear existing trait options and populate from data.
-			const traitGroup = document.getElementById(`${traitType}Group`);
+			const traitGroup = document.getElementById(`${offer.name}Group`);
 			traitGroup.innerHTML = ''; // Clear existing content
 			
-			traitDescs.forEach((desc, index) => {
+			offer.traits.forEach((trait, index) => {
 				const traitDiv = document.createElement('div');
 				traitDiv.className = 'trait-checkbox';
 				
-				const traitId = `${traitType}${index}`; // Create unique ID for each ability
+				const traitId = `${offer.name}${index}`; // Create unique ID for each ability
 				traitDiv.innerHTML = `
 					<label for="${traitId}" class="trait-label">
 						<input type="checkbox" id="${traitId}" class="trait-checkbox-input" onchange="onCreationCheckboxChange(event)">
-						${desc}
+						${trait}
 					</label>
 				`;
 				
@@ -406,12 +408,13 @@
 		}
 
 		function canSubmitCharacterCreation() {
-			const abilityPicksCount = getCharacterCreationPicks("ability").length;
-			const weaknessPicksCount = getCharacterCreationPicks("weakness").length;
-			const itemPicksCount = getCharacterCreationPicks("item").length;
-			return abilityPicksCount == creationData.ability_pick_count &&
-				weaknessPicksCount == creationData.weakness_pick_count &&
-				itemPicksCount == creationData.item_pick_count;
+			for (let trait_type in creationData.trait_offers) {
+				const picksCount = getCharacterCreationPicks(trait_type).length;
+				if (picksCount != creationData.trait_offers[trait_type].pick_count) {
+					return false;
+				}
+			}
+			return true;
 		}
 
 		function updateSubmitChrBtn() {
@@ -426,7 +429,7 @@
 			document.getElementById('arena').style.display = 'block';
 			updateTemplate('.chr-desc p', data);
 			updateTemplate('.server-stats p', data);
-			updateTemplate('.arena-desc p', data);
+			updateTemplate('.fight-desc p', data);
 		}
 		
 		const LoadingSpinner = (function() {

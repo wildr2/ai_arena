@@ -1,8 +1,6 @@
 from server_lib import *
 
-use_dummy_trait_data = False
 write_dummy_trait_data = False
-dummy_trait_data_path = "dummy_data/dummy_trait_pool.pkl"
 use_dummy_chr_data = False
 write_dummy_chr_data = False
 dummy_chr_data_path = "dummy_data/dummy_chr_list.pkl"
@@ -34,7 +32,7 @@ def cli_create_chr(trait_pool):
 	for trait_type in trait_pool.traits.keys():
 		cli_offer(chr, trait_type)
 	print("Deliberating...")
-	chr.desc = gen_chr_desc(chr, "Character Description")
+	chr.desc = gen_chr_desc(chr)
 	log_header("Character Created!")
 	print(chr.desc)
 	log_header("")
@@ -44,14 +42,9 @@ chrs = CharacterList()
 if use_dummy_chr_data:
 	chrs = CharacterList.deserialize(open(dummy_chr_data_path, "rb"))
 else:
-	if use_dummy_trait_data:
-		trait_pool = TraitPool.deserialize(open(dummy_trait_data_path, "rb"))
-		# trait_pool.log()
-	else:
-		trait_pool = TraitPool()
-
-		if write_dummy_trait_data:
-			trait_pool.serialize(open(dummy_trait_data_path, "wb"))
+	trait_pool = create_trait_pool()
+	if write_dummy_trait_data and not use_dummy_trait_data:
+		trait_pool.serialize(open(dummy_trait_data_path, "wb"))
 
 	for i in range(chr_count):
 		chrs.list.append(cli_create_chr(trait_pool))
