@@ -9,7 +9,7 @@ import pickle
 ollama_model_name = "llama3.2:3b-instruct-q4_K_M"
 # ollama_model_name = "llama3.1:8b-instruct-q4_K_M"
 model_context_length = 1024
-debug_no_model = True
+debug_no_model = False
 debug_log = False
 
 chr_count = 2
@@ -58,7 +58,7 @@ trait_types = [
 def log_header(header):
 	print(header.center(60, "-"))
 
-def gen_traits(trait_type):
+def gen_traits(trait_type, total_start_time):
 	if debug_no_model:
 		return [Trait(f"{trait_type.name} {i}") for i in range(trait_type.gen_count * chr_count)]
 	
@@ -69,7 +69,7 @@ def gen_traits(trait_type):
 		response: ChatResponse = ollama.generate(
 			model=ollama_model_name, 
 			prompt=formatted_prompt, 
-			traits={"num_ctx": model_context_length, "repeat_penalty": 1.1, "temperature": 0.87})
+			options={"num_ctx": model_context_length, "repeat_penalty": 1.1, "temperature": 0.87})
 		content = response.response
 		elapsed = time.time() - start_time
 
@@ -90,7 +90,12 @@ def gen_traits(trait_type):
 			print(content)
 			log_header("")
 			exit()
+			
 		traits.extend(new_traits)
+
+		total_elapsed = time.time() - total_start_time
+		print(f"{time.strftime('%H:%M:%S', time.gmtime(total_elapsed))} generated {len(traits)}/{trait_type.gen_count * chr_count} {trait_type.plural_name}")
+
 	return traits
 	
 def gen_chr_desc(chr, debug_log_header):
@@ -102,7 +107,7 @@ def gen_chr_desc(chr, debug_log_header):
 	response: ChatResponse = ollama.generate(
 		model=ollama_model_name, 
 		prompt=formatted_prompt, 
-		traits={"num_ctx": model_context_length, "repeat_penalty": 1.1, "temperature": 0.85})
+		options={"num_ctx": model_context_length, "repeat_penalty": 1.1, "temperature": 0.85})
 	content = response.response
 	elapsed = time.time() - start_time 
 
@@ -126,7 +131,7 @@ def gen_fight_desc(chrs):
 	response: ChatResponse = ollama.generate(
 		model=ollama_model_name, 
 		prompt=formatted_prompt, 
-		traits={"num_ctx": model_context_length, "repeat_penalty": 1.1, "temperature": 0.8})
+		options={"num_ctx": model_context_length, "repeat_penalty": 1.1, "temperature": 0.8})
 	content = response.response
 	elapsed = time.time() - start_time 
 
@@ -151,8 +156,9 @@ class Trait:
 class TraitPool:
 	def __init__(self):
 		self.traits = {}
+		start_time = time.time()
 		for trait_type in trait_types:
-			self.traits[trait_type] = gen_traits(trait_type)
+			self.traits[trait_type] = gen_traits(trait_type, start_time)
 
 	def log(self):
 		log_header("Trait Pool")
@@ -165,7 +171,32 @@ class TraitPool:
 		pickle.dump(self, file)
 
 	def deserialize(file):
-		return pickle.load(file)
+		pool = pickle.load(file)
+		for trait_type in trait_types:
+			assert trait_type in pool.traits, f"TraitPool file '{file.name}' missing trait '{trait_type.name}'"
+			assert len(pool.traits[trait_type]) >= trait_type.offer_count * chr_count
+		return pool
+
+	# Custom serialization
+	def __getstate__(self):
+		state = self.__dict__.copy()
+		# Convert TraitType keys to names
+		state["traits"] = {tt.name: traits for tt, traits in state["traits"].items()}
+		return state
+
+	# Custom dezerialization
+	def __setstate__(self, state):
+		# Convert names back to TraitType instances
+		traits = state["traits"]
+		self.traits = {}
+		for name, trait_list in traits.items():
+			# Find the corresponding TraitType instance
+			tt = next((tt for tt in trait_types if tt.name == name), None)
+			if tt is not None:
+				self.traits[tt] = trait_list
+			else:
+				# No matching TraitType
+				pass
 
 class Character:
 	def __init__(self, trait_pool):
@@ -185,13 +216,13 @@ class Character:
 		return sheet.strip()
 
 	def pick_trait(self, trait_type, trait):
-		assert(trait not in self.picks[trait_type])
-		assert(len(self.picks[trait_type]) < trait_type.pick_count)
+		assert trait not in self.picks[trait_type]
+		assert len(self.picks[trait_type]) < trait_type.pick_count
 		self.picks[trait_type].append(trait)
 
 	def _claim_offer(self, traits, n):
 		unclaimed_traits = [trait for trait in traits if not trait.chr]
-		assert(len(unclaimed_traits) >= n)
+		assert len(unclaimed_traits) >= n
 		random.shuffle(unclaimed_traits)
 		claim = unclaimed_traits[:n]
 		for trait in claim:
