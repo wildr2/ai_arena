@@ -163,7 +163,7 @@
 
 	<div class="character-creation" id="characterCreation">
 		<div style="padding: 20px;">
-			<h2 id="abilityHeader" data-template="Choose {pickCount} {traitName}"></h2>
+			<h2 id="abilityHeader" data-template="Choose {pickCount} {traitType}"></h2>
 			<div class="trait-group" id="abilityGroup">
 				<div class="trait-checkbox">
 					<label for="ability0" class="trait-label">
@@ -178,7 +178,7 @@
 					</label>
 				</div>
 			</div>
-			<h2 id="weaknessHeader" data-template="Choose {pickCount} {traitName}"></h2>
+			<h2 id="weaknessHeader" data-template="Choose {pickCount} {traitType}"></h2>
 			<div class="weakness-group" id="weaknessGroup">
 				<div class="trait-checkbox">
 					<label for="weakness0" class="trait-label">
@@ -193,7 +193,7 @@
 					</label>
 				</div>
 			</div>
-			<h2 id="itemHeader" data-template="Choose {pickCount} {traitName}"></h2>
+			<h2 id="itemHeader" data-template="Choose {pickCount} {traitType}"></h2>
 			<div class="item-group" id="itemGroup">
 				<div class="trait-checkbox">
 					<label for="item0" class="trait-label">
@@ -369,26 +369,26 @@
 			updateSubmitChrBtn();
 		}
 
-		function showCharacterCreationTrait(trait, traitPlural, pickCount, traitOptions) {
+		function showCharacterCreationTrait(traitType, traitTypePlural, pickCount, traitDescs) {
 			let templateData = {
 				pickCount: pickCount,
-				traitName: pickCount == 1 ? trait : traitPlural
+				traitType: pickCount == 1 ? traitType : traitTypePlural
 			}
-			updateTemplate(`#${trait}Header`, templateData);
+			updateTemplate(`#${traitType}Header`, templateData);
 			
 			// Clear existing trait options and populate from data.
-			const traitGroup = document.getElementById(`${trait}Group`);
+			const traitGroup = document.getElementById(`${traitType}Group`);
 			traitGroup.innerHTML = ''; // Clear existing content
 			
-			traitOptions.forEach((traitOption, index) => {
+			traitDescs.forEach((desc, index) => {
 				const traitDiv = document.createElement('div');
 				traitDiv.className = 'trait-checkbox';
 				
-				const traitOptionId = `${trait}${index}`; // Create unique ID for each ability
+				const traitId = `${traitType}${index}`; // Create unique ID for each ability
 				traitDiv.innerHTML = `
-					<label for="${traitOptionId}" class="trait-label">
-						<input type="checkbox" id="${traitOptionId}" class="trait-checkbox-input" onchange="onCreationCheckboxChange(event)">
-						${traitOption}
+					<label for="${traitId}" class="trait-label">
+						<input type="checkbox" id="${traitId}" class="trait-checkbox-input" onchange="onCreationCheckboxChange(event)">
+						${desc}
 					</label>
 				`;
 				
@@ -400,9 +400,9 @@
 			updateSubmitChrBtn();
 		}
 		
-		function getCharacterCreationPicks(trait) {
-			const checkboxes = document.querySelector(`#${trait}Group`).querySelectorAll(".trait-checkbox-input");
-			return Array.from(checkboxes).filter(checkbox => checkbox.checked).map(checkbox => checkbox.id.split(trait)[1]);
+		function getCharacterCreationPicks(traitType) {
+			const checkboxes = document.querySelector(`#${traitType}Group`).querySelectorAll(".trait-checkbox-input");
+			return Array.from(checkboxes).filter(checkbox => checkbox.checked).map(checkbox => checkbox.id.split(traitType)[1]);
 		}
 
 		function canSubmitCharacterCreation() {
