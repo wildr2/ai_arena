@@ -43,7 +43,7 @@ trait_types = [
 		"weaknesses",
 		gen_count = 5,
 		offer_count = 2,
-		pick_count = 1,
+		pick_count = 0,
 		prompt = """Give me a choice of {0} fantasy character weaknesses. Weakness descriptions should be specific and brief (just a few words), for instance "you are terrible at throwing". Weaknesses can range from crippling, for instance "you are blind", to underwhelming and potentially funny, for instance "you are allergic to peanuts". Do not assume that the character can use magic, or has a sword, etc. Don't use exactly the above examples."""
 	),
 	TraitType(
@@ -51,10 +51,11 @@ trait_types = [
 		"items",
 		gen_count = 5,
 		offer_count = 3,
-		pick_count = 1,
+		pick_count = 0,
 		prompt = """Give me a choice of {0} equipment a fantasy character could take into battle. Item descriptions should be specific and brief (just a few words), for instance "magic boots that make you run faster". Descriptions should not contain numbers. Items can range from powerful, for instance "a flaming sword", to underwhelming and potentially funny, for instance "a pointy stick". Don't use exactly the above examples."""
 	)
 ]
+trait_types = [tt for tt in trait_types if tt.pick_count > 0]
 
 def log_header(header):
 	print(header.center(60, "-"))

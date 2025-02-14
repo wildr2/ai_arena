@@ -7,7 +7,7 @@
 	<title>Welcome to the Arena</title>
 	<style>
 		body {
-			font-family: 'Roboto', sans-serif;
+			font-family: "Roboto", sans-serif;
 			background-color: #111;
 			color: #fff;
 		}
@@ -163,51 +163,7 @@
 
 	<div class="character-creation" id="characterCreation">
 		<div style="padding: 20px;">
-			<h2 id="abilityHeader" data-template="Choose {pickCount} {traitType}"></h2>
-			<div class="trait-group" id="abilityGroup">
-				<div class="trait-checkbox">
-					<label for="ability0" class="trait-label">
-						<input type="checkbox" id="ability0" class="trait-checkbox-input">
-						You can fly
-					</label>
-				</div>
-				<div class="trait-checkbox">
-					<label for="ability1" class="trait-label">
-						<input type="checkbox" id="ability1" class="trait-checkbox-input">
-						You can do a forward roll
-					</label>
-				</div>
-			</div>
-			<h2 id="weaknessHeader" data-template="Choose {pickCount} {traitType}"></h2>
-			<div class="weakness-group" id="weaknessGroup">
-				<div class="trait-checkbox">
-					<label for="weakness0" class="trait-label">
-						<input type="checkbox" id="weakness0" class="trait-checkbox-input">
-						You are allergic to peanuts
-					</label>
-				</div>
-				<div class="trait-checkbox">
-					<label for="weakness1" class="trait-label">
-						<input type="checkbox" id="weakness1" class="trait-checkbox-input">
-						You are blind
-					</label>
-				</div>
-			</div>
-			<h2 id="itemHeader" data-template="Choose {pickCount} {traitType}"></h2>
-			<div class="item-group" id="itemGroup">
-				<div class="trait-checkbox">
-					<label for="item0" class="trait-label">
-						<input type="checkbox" id="item0" class="trait-checkbox-input">
-						A sturdy shield
-					</label>
-				</div>
-				<div class="trait-checkbox">
-					<label for="item1" class="trait-label">
-						<input type="checkbox" id="item1" class="trait-checkbox-input">
-						A pointed stick
-					</label>
-				</div>
-			</div>
+			<div id="traitGroupContainer"></div>
 			<button id="submitChrBtn" onclick="submitCharacter()" style="margin-top: 20px;">Confirm</button>
 			<button onclick="logOut()" class="logout-button">Logout</button>
 		</div>
@@ -233,20 +189,20 @@
 		let username = "";
 		let creationData = {}
 		
-		document.addEventListener('DOMContentLoaded', function() {
+		document.addEventListener("DOMContentLoaded", function() {
 			reconnect();
 		});
 		
 		function saveConnection(newServerUrl, newUsername) {
 			serverUrl = newServerUrl
 			username = newUsername
-			localStorage.setItem('username', newUsername);
-			localStorage.setItem('serverUrl', newServerUrl);
+			localStorage.setItem("username", newUsername);
+			localStorage.setItem("serverUrl", newServerUrl);
 		}
 
 		function reconnect() {
-			serverUrl = localStorage.getItem('serverUrl');
-			username = localStorage.getItem('username');
+			serverUrl = localStorage.getItem("serverUrl");
+			username = localStorage.getItem("username");
 			if (username && serverUrl) {
 				connect(serverUrl, username)
 			} else {
@@ -272,9 +228,9 @@
 		function connect(serverUrl, username) {
 			LoadingSpinner.show();
 			fetch(`${serverUrl}/connect`, {
-				method: 'POST',
+				method: "POST",
 				headers: {
-					'Content-Type': 'application/json',
+					"Content-Type": "application/json",
 				},
 				body: JSON.stringify({
 					username: username
@@ -321,9 +277,9 @@
 			// Send the selected abilities to the server
 			LoadingSpinner.show();
 			fetch(`${serverUrl}/create-character`, {
-				method: 'POST',
+				method: "POST",
 				headers: {
-					'Content-Type': 'application/json',
+					"Content-Type": "application/json",
 				},
 				body: JSON.stringify({
 					username: username,
@@ -357,15 +313,15 @@
 		}
 
 		function showConnect() {
-			document.querySelector('.connect-container').style.display = 'block';
-			document.getElementById('characterCreation').style.display = 'none';
-			document.getElementById('arena').style.display = 'none';
+			document.querySelector(".connect-container").style.display = "block";
+			document.getElementById("characterCreation").style.display = "none";
+			document.getElementById("arena").style.display = "none";
 		}
 
 		function showCharacterCreation(data) {
-			document.querySelector('.connect-container').style.display = 'none';
-			document.getElementById('characterCreation').style.display = 'block';
-			document.getElementById('arena').style.display = 'none';
+			document.querySelector(".connect-container").style.display = "none";
+			document.getElementById("characterCreation").style.display = "block";
+			document.getElementById("arena").style.display = "none";
 			
 			creationData = data;
 			for (let trait_type in data.trait_offers) {
@@ -375,20 +331,27 @@
 		}
 
 		function showTraitOffer(offer) {
-			let templateData = {
-				pickCount: offer.pick_count,
-				traitType: offer.pick_count == 1 ? offer.name : offer.plural_name
-			}
-			updateTemplate(`#${offer.name}Header`, templateData);
+			const parent = document.getElementById("traitGroupContainer");
+			parent.innerHTML = ""
+
+			// Create new header
+			const header = document.createElement("h2");
+			header.id = `${offer.name}Header`;
+			header.textContent = `Choose ${offer.pick_count} ${offer.pick_count === 1 ? offer.name : offer.plural_name}`;
 			
-			// Clear existing trait options and populate from data.
-			const traitGroup = document.getElementById(`${offer.name}Group`);
-			traitGroup.innerHTML = ''; // Clear existing content
-			
+			// Create new group
+			const group = document.createElement("div");
+			group.id = `${offer.name}Group`;
+			group.className = "trait-group";
+
+			// Add header and group to creation div
+			parent.appendChild(header);
+			parent.appendChild(group);
+
+			// Populate with traits
 			offer.traits.forEach((trait, index) => {
-				const traitDiv = document.createElement('div');
-				traitDiv.className = 'trait-checkbox';
-				
+				const traitDiv = document.createElement("div");
+				traitDiv.className = "trait-checkbox";
 				const traitId = `${offer.name}${index}`;
 				traitDiv.innerHTML = `
 					<label for="${traitId}" class="trait-label">
@@ -396,8 +359,7 @@
 						${trait}
 					</label>
 				`;
-				
-				traitGroup.appendChild(traitDiv);
+				group.appendChild(traitDiv);
 			});
 		}
 
@@ -422,18 +384,18 @@
 		}
 
 		function updateSubmitChrBtn() {
-			const submitButton = document.getElementById('submitChrBtn');
+			const submitButton = document.getElementById("submitChrBtn");
 			let canSubmit = canSubmitCharacterCreation();
 			submitButton.disabled = !canSubmit;
 		}
 
 		function showArena(data) {
-			document.querySelector('.connect-container').style.display = 'none';
-			document.getElementById('characterCreation').style.display = 'none';
-			document.getElementById('arena').style.display = 'block';
-			updateTemplate('.chr-desc p', data);
-			updateTemplate('.server-stats p', data);
-			updateTemplate('.fight-desc p', data);
+			document.querySelector(".connect-container").style.display = "none";
+			document.getElementById("characterCreation").style.display = "none";
+			document.getElementById("arena").style.display = "block";
+			updateTemplate(".chr-desc p", data);
+			updateTemplate(".server-stats p", data);
+			updateTemplate(".fight-desc p", data);
 		}
 		
 		const LoadingSpinner = (function() {
@@ -443,14 +405,14 @@
 					loadingSpinnerPending = true;
 					setTimeout(() => {
 						if (loadingSpinnerPending) {
-							document.querySelector('.loading-spinner-overlay').style.display = 'flex';
+							document.querySelector(".loading-spinner-overlay").style.display = "flex";
 						}
 					}, 300);
 				},
 				
 				hide: function() {
 					loadingSpinnerPending = false;
-					document.querySelector('.loading-spinner-overlay').style.display = 'none';
+					document.querySelector(".loading-spinner-overlay").style.display = "none";
 				}
 			};
 		})();
