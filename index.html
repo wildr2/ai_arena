@@ -291,9 +291,9 @@
 						saveConnection(serverUrl, username);
 						showArena(data);
 						break;
-					case "invalid_username":
+					case "error":
 						logOut();
-						alert("Invalid username. Usernames must be between 1 and 16 characters.");
+						alert(data.error);
 						break;
 					default:
 						logOut();
@@ -308,9 +308,10 @@
 		}
 
 		function submitCharacter() {
-			const abilityPicks = getCharacterCreationPicks("ability")
-			const weaknessPicks= getCharacterCreationPicks("weakness")
-			const itemPicks = getCharacterCreationPicks("item")
+			traitPicks = {};
+			for (let trait_type in creationData.trait_offers) {
+				traitPicks[trait_type] = getCharacterCreationPicks(trait_type);
+			}
 
 			if (!canSubmitCharacterCreation()) {
 				alert("You must make the correct number of choices");
@@ -326,9 +327,7 @@
 				},
 				body: JSON.stringify({
 					username: username,
-					ability_picks: abilityPicks,
-					weakness_picks: weaknessPicks,
-					item_picks: itemPicks,
+					trait_picks: traitPicks
 				})
 			}).then(response => response.json())
 			.then(data => {
@@ -336,6 +335,10 @@
 				switch(data.status) {
 					case "arena":
 						showArena(data);
+						break;
+					case "error":
+						logOut();
+						alert(data.error);
 						break;
 					default:
 						alert("Unknown response from server");
@@ -386,7 +389,7 @@
 				const traitDiv = document.createElement('div');
 				traitDiv.className = 'trait-checkbox';
 				
-				const traitId = `${offer.name}${index}`; // Create unique ID for each ability
+				const traitId = `${offer.name}${index}`;
 				traitDiv.innerHTML = `
 					<label for="${traitId}" class="trait-label">
 						<input type="checkbox" id="${traitId}" class="trait-checkbox-input" onchange="onCreationCheckboxChange(event)">
@@ -404,7 +407,8 @@
 		
 		function getCharacterCreationPicks(traitType) {
 			const checkboxes = document.querySelector(`#${traitType}Group`).querySelectorAll(".trait-checkbox-input");
-			return Array.from(checkboxes).filter(checkbox => checkbox.checked).map(checkbox => checkbox.id.split(traitType)[1]);
+			return Array.from(checkboxes).filter(
+				checkbox => checkbox.checked).map(checkbox => parseInt(checkbox.id.split(traitType)[1]));
 		}
 
 		function canSubmitCharacterCreation() {

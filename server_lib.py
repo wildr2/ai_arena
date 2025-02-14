@@ -11,7 +11,7 @@ ollama_model_name = "llama3.2:3b-instruct-q4_K_M"
 # ollama_model_name = "llama3.1:8b-instruct-q4_K_M"
 model_context_length = 1024
 debug_log = False
-debug_no_model = False
+debug_no_model = True
 use_dummy_trait_data = True
 dummy_trait_data_path = "dummy_data/dummy_trait_pool.pkl"
 

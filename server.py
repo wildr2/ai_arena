@@ -29,15 +29,16 @@ class Game:
 			if len(self.users) < self.max_users:
 				user = User(username)
 				self.users[username] = user
+				print(f"added user: username='{username}'")
 				return user
 
 		return None
 	
 	def get_ready_users_count(self):
-		return len([user for user in self.users if user.chr.desc]) > self.max_users
+		return len([user for user in self.users.values() if user.chr.desc])
 
 	def fight(self):
-		self.fight_desc = gen_fight_desc([user.chr for user in self.users])
+		self.fight_desc = gen_fight_desc([user.chr for user in self.users.values()])
 
 	def get_response_creation(self, user):
 		trait_offers = {
@@ -55,12 +56,11 @@ class Game:
 		})
 	
 	def get_response_arena(self, user):
-		ready = self.get_ready_users_count()
 		chr_desc = user.chr.desc if user else "You are a spectator."
 		return jsonify({
 			"status": "arena",
 			"chr_desc": chr_desc,
-			"ready": ready,
+			"ready": self.get_ready_users_count(),
 			"max": self.max_users,
 			"fight_desc": self.fight_desc
 		})
@@ -78,14 +78,19 @@ def connect():
 	global game
 	data = request.json
 	username = data.get("username")
+	
+	user = game.get_user(username)
+	print(f"connection: username='{username}'{' (existing)' if user else ''}")
 
 	if username == "":
 		# Spectator.
 		return game.get_response_arena(None)
 
 	if not User.is_valid_username(username):
+		print(f"invalid username: username='{username}'")
 		return jsonify({
-			"status": "invalid_username"
+			"status": "error",
+			"error": "Invalid username. Usernames must be between 1 and 16 characters in length."
 		})
 
 	user = game.add_get_user(username)
@@ -103,11 +108,32 @@ def create_character():
 
 	username = data.get("username")
 	user = game.get_user(username)
-	if user:
-		user.chr.desc = gen_chr_desc(user.chr)
+	if not user:
+		return jsonify({
+			"status": "error",
+			"error": "User not found."
+		})
 
-		if game.get_ready_users_count() == game.max_users:
-			game.fight()
+	try:
+		trait_picks = data.get("trait_picks")
+		for trait_type in trait_types:
+			picks = trait_picks[trait_type.name]
+			assert len(picks) == trait_type.pick_count
+			offer = user.chr.offers[trait_type]
+			for pick in picks:
+				assert pick >= 0 and pick < len(offer)
+				user.chr.pick_trait(trait_type, offer[pick])
+	except Exception as e:
+		print("Character creation failed.", e)
+		return jsonify({
+			"status": "error",
+			"error": "Received invalid character creation data."
+		})
+
+	user.chr.desc = gen_chr_desc(user.chr)
+
+	if game.get_ready_users_count() == game.max_users:
+		game.fight()
 
 	return game.get_response_arena(user)
 
