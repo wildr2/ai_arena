@@ -267,7 +267,7 @@
 						break;
 					case "error":
 						logOut();
-						alert(data.error);
+						alert(`Server error: ${data.error}`);
 						break;
 					default:
 						logOut();
@@ -288,7 +288,7 @@
 			}
 
 			if (!canSubmitCharacterCreation()) {
-				alert("You must make the correct number of choices");
+				alert("Invalid choices.");
 				return;
 			}
 			
@@ -312,9 +312,10 @@
 						break;
 					case "error":
 						logOut();
-						alert(data.error);
+						alert(`Server error: ${data.error}`);
 						break;
 					default:
+						logOut();
 						alert("Unknown response from server");
 				}
 			})

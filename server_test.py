@@ -12,6 +12,7 @@ def cli_offer(chr, trait_type):
 	for i in range(len(offer)):
 		print(f"\t{i + 1}. {offer[i]}")
 
+	picks = []
 	for i in range(trait_type.pick_count):
 		pick = -1
 		while pick < 0:
@@ -20,22 +21,30 @@ def cli_offer(chr, trait_type):
 				pick = int(pick_str) - 1
 			except:
 				pick = -1
-			if pick < 0 or pick >= len(offer):
+			if pick < 0 or pick >= len(offer) or pick in picks:
 				pick = -1
-			if offer[pick] in chr.picks[trait_type]:
-				pick = -1
-		chr.pick_trait(trait_type, offer[pick])
+		picks.append(pick)
+	return picks
 
 def cli_create_chr(trait_pool):
 	chr = Character(trait_pool)
 	log_header("Character Creation")
+
+	trait_picks = {}
 	for trait_type in trait_pool.traits.keys():
-		cli_offer(chr, trait_type)
+		trait_picks[trait_type.name] = cli_offer(chr, trait_type)
+	chr.submit(trait_picks)
 	print("Deliberating...")
-	chr.desc = gen_chr_desc(chr)
+
+	assert chr.is_submitted()
+	chr.gen_desc()
 	log_header("Character Created!")
+
+	print(chr.name)
+	log_header("")
 	print(chr.desc)
 	log_header("")
+
 	return chr
 
 chrs = CharacterList()

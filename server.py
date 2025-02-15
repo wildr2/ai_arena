@@ -43,8 +43,12 @@ class Game:
 	def get_ready_users_count(self):
 		return len(self.get_ready_users())
 
-	def fight(self):
-		self.fight_desc = gen_fight_desc([user.chr for user in self.users.values()])
+	def try_start_fight(self):
+		try:
+			if not self.fight_desc and self.get_ready_users_count() == self.max_users:
+				self.fight_desc = gen_fight_desc([user.chr for user in self.users.values()])
+		except Exception as e:
+			print("Failed to start fight:", e)
 
 	def get_response_creation(self, user):
 		trait_offers = {
@@ -102,11 +106,27 @@ def connect():
 		})
 
 	user = game.add_get_user(username)
-
-	if user and not user.chr.is_submitted():
+	if not user:
+		# Spectator (game full).
+		return game.get_response_arena(None)
+	if not user.chr.is_submitted():
 		return game.get_response_creation(user)
-	else:
-		return game.get_response_arena(user)
+	if not user.is_ready():
+		# Finish incomplete character creation (failed to generate desc before).
+		try:
+			user.chr.gen_desc()
+		except Exception as e:
+			print("Failed to generate character desc:", e)
+			return jsonify({
+				"status": "error",
+				"error": "Failed to create character: Generation failed."
+			})
+
+	# Generate fight if ready.
+	# (might have just finished chr generation, or might have failed to generate fight earlier)
+	game.try_start_fight()
+			
+	return game.get_response_arena(user)
 
 @app.route("/create-character", methods=["POST"])
 @cross_origin()
@@ -119,30 +139,29 @@ def create_character():
 	if not user:
 		return jsonify({
 			"status": "error",
-			"error": "User not found."
+			"error": "Failed to create character: User not found."
 		})
 
 	try:
 		trait_picks = data.get("trait_picks")
-		for trait_type in trait_types:
-			picks = trait_picks[trait_type.name]
-			assert len(picks) == trait_type.pick_count
-			offer = user.chr.offers[trait_type]
-			for pick in picks:
-				assert pick >= 0 and pick < len(offer)
-				user.chr.pick_trait(trait_type, offer[pick])
+		user.chr.submit(trait_picks)		
 	except Exception as e:
-		print("Character creation failed.", e)
+		print("Failed to submit character:", e)
 		return jsonify({
 			"status": "error",
-			"error": "Received invalid character creation data."
+			"error": "Failed to create character: Error submitting traits."
 		})
 
-	user.chr.name = "Name"
-	user.chr.desc = gen_chr_desc(user.chr)
-
-	if game.get_ready_users_count() == game.max_users:
-		game.fight()
+	try:
+		user.chr.gen_desc()
+	except Exception as e:
+		print("Failed to generate character desc:", e)
+		return jsonify({
+			"status": "error",
+			"error": "Failed to create character: Generation failed."
+		})
+		
+	game.try_start_fight()
 
 	return game.get_response_arena(user)
 

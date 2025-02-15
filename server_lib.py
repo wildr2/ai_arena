@@ -5,6 +5,7 @@ import re
 import random
 import pickle
 from dataclasses import dataclass
+import string
 
 # Create api_keys.py locally.
 import api_keys
@@ -21,7 +22,7 @@ ollama_context_length = 1024
 
 debug_log = False
 debug_no_model = False
-use_dummy_trait_data = False
+use_dummy_trait_data = True
 dummy_trait_data_path = "dummy_data/dummy_trait_pool.pkl"
 
 prompt_chr_desc = """{0}\n\nThe above describes a character that will be forced to fight in the arena. Assume nothing that isn't described above. In second person tense, give the character a name and provide a very short summary of them. Begin with 'You are <name>'."""
@@ -67,7 +68,7 @@ trait_types = [tt for tt in trait_types if tt.pick_count > 0]
 class Generator():
 	@dataclass(kw_only=True)
 	class Options():
-		temperature: float = 0.9
+		temperature: float = 1.0
 		
 	def __init__(self, model_name):
 		self.model_name = model_name
@@ -162,7 +163,7 @@ def gen_traits(trait_type, total_start_time):
 	
 def gen_chr_desc(chr):
 	if debug_no_model:
-		return "You are..."
+		return "Name", "You are..."
 	
 	formatted_prompt = prompt_chr_desc.format(chr.get_chr_sheet())
 	options = Generator.Options(
@@ -170,12 +171,22 @@ def gen_chr_desc(chr):
 	)
 	content, elapsed = generator.generate(formatted_prompt, options)
 
+	desc = content.replace("*", "").strip()
+	name = desc.split()[2] # You are <name>
+	name = name.translate(str.maketrans('', '', string.punctuation)) # Strip puncutation.
+
 	if debug_log:
 		log_header(f"Character Description {time.strftime('%H:%M:%S', time.gmtime(elapsed))}")
 		print(content)
-		log_header("")
+		log_header("Name")
+		print(name)
+
+	if not desc:
+		raise ValueError("Failed to generate desc.")
+	if not name:
+		raise ValueError("Failed to generate name.")
 	
-	return content
+	return name, desc
 
 def gen_fight_desc(chrs):
 	if debug_no_model:
@@ -192,12 +203,17 @@ def gen_fight_desc(chrs):
 	)
 	content, elapsed = generator.generate(formatted_prompt, options)
 
+	desc = content.replace("*", "").strip()
+
 	if debug_log:
 		log_header(f"Fight {time.strftime('%H:%M:%S', time.gmtime(elapsed))}")
 		print(content)
 		log_header("")
 	
-	return content
+	if not desc:
+		raise ValueError("Failed to generate fight.")
+	
+	return desc
 
 def create_trait_pool():
 	if use_dummy_trait_data:
@@ -275,7 +291,7 @@ class Character:
 		return all(len(self.picks[tt]) == tt.pick_count for tt in trait_types)
 	
 	def is_ready(self):
-		return bool(self.desc)
+		return self.name and self.desc
 
 	def get_chr_sheet(self):
 		sheet = ""
@@ -285,7 +301,37 @@ class Character:
 				sheet += f"{i+1}. {pick}\n"
 		return sheet.strip()
 
-	def pick_trait(self, trait_type, trait):
+	def submit(self, trait_picks):
+		if self.is_submitted():
+			raise ValueError("Already submitted.")
+
+		for trait_type in trait_types:
+			assert len(self.picks[trait_type]) == 0, "Unexpected picks state."
+
+			picks = trait_picks[trait_type.name]
+			picks = list(dict.fromkeys(picks))
+			if len(picks) != trait_type.pick_count:
+				raise ValueError(f"Invalid trait picks. picks: {trait_picks[trait_type.name]} pick_count: {trait_type.pick_count}")
+
+			offer = self.offers[trait_type]
+			for pick in picks:
+				if pick < 0 or pick >= len(offer):
+					raise ValueError("Invalid trait picks.")
+				
+		for trait_type in trait_types:
+			picks = trait_picks[trait_type.name]
+			offer = self.offers[trait_type]
+			for pick in picks:
+				self._pick_trait(trait_type, offer[pick])
+				
+	def gen_desc(self):
+		assert self.is_submitted() and not self.is_ready()
+		try:
+			self.name, self.desc = gen_chr_desc(self)
+		except Exception as e:
+			raise
+
+	def _pick_trait(self, trait_type, trait):
 		assert trait not in self.picks[trait_type]
 		assert len(self.picks[trait_type]) < trait_type.pick_count
 		self.picks[trait_type].append(trait)
