@@ -8,7 +8,7 @@ dummy_chr_data_path = "dummy_data/dummy_chr_list.pkl"
 def cli_offer(chr, trait_type):
 	trait_str = f"{trait_type.plural_name}" if trait_type.pick_count > 1 else f"{trait_type.name}"
 	log_header(f"Choose {trait_type.pick_count} {trait_str.capitalize()}")
-	offer = chr.offers[trait_type]
+	offer = chr.offers[trait_type.name]
 	for i in range(len(offer)):
 		print(f"\t{i + 1}. {offer[i]}")
 
@@ -31,7 +31,7 @@ def cli_create_chr(trait_pool):
 	log_header("Character Creation")
 
 	trait_picks = {}
-	for trait_type in trait_pool.traits.keys():
+	for trait_type in trait_types:
 		trait_picks[trait_type.name] = cli_offer(chr, trait_type)
 	chr.submit(trait_picks)
 	print("Deliberating...")

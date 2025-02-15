@@ -22,7 +22,7 @@ ollama_context_length = 1024
 
 debug_log = False
 debug_no_model = False
-use_dummy_trait_data = True
+use_dummy_trait_data = False
 dummy_trait_data_path = "dummy_data/dummy_trait_pool.pkl"
 
 prompt_chr_desc = """{0}\n\nThe above describes a character that will be forced to fight in the arena. Assume nothing that isn't described above. In second person tense, give the character a name and provide a very short summary of them. Begin with 'You are <name>'."""
@@ -237,13 +237,13 @@ class TraitPool:
 		self.traits = {}
 		start_time = time.time()
 		for trait_type in trait_types:
-			self.traits[trait_type] = gen_traits(trait_type, start_time)
+			self.traits[trait_type.name] = gen_traits(trait_type, start_time)
 
 	def log(self):
 		log_header("Trait Pool")
 		for trait_type in trait_types:
 			log_header(trait_type.name.capitalize())
-			for trait in self.traits[trait_type]: print(f"{trait}")
+			for trait in self.traits[trait_type.name]: print(f"{trait}")
 		log_header("")
 
 	def serialize(self, file):
@@ -252,43 +252,22 @@ class TraitPool:
 	def deserialize(file):
 		pool = pickle.load(file)
 		for trait_type in trait_types:
-			assert trait_type in pool.traits, f"TraitPool file '{file.name}' missing trait '{trait_type.name}'"
-			assert len(pool.traits[trait_type]) >= trait_type.offer_count * chr_count
+			assert trait_type.name in pool.traits, f"TraitPool file '{file.name}' missing trait '{trait_type.name}'"
+			assert len(pool.traits[trait_type.name]) >= trait_type.offer_count * chr_count
 		return pool
-
-	# Custom serialization
-	def __getstate__(self):
-		state = self.__dict__.copy()
-		# Convert TraitType keys to names
-		state["traits"] = {tt.name: traits for tt, traits in state["traits"].items()}
-		return state
-
-	# Custom dezerialization
-	def __setstate__(self, state):
-		# Convert names back to TraitType instances
-		traits = state["traits"]
-		self.traits = {}
-		for name, trait_list in traits.items():
-			# Find the corresponding TraitType instance
-			tt = next((tt for tt in trait_types if tt.name == name), None)
-			if tt is not None:
-				self.traits[tt] = trait_list
-			else:
-				# No matching TraitType
-				pass
 
 class Character:
 	def __init__(self, trait_pool):
 		self.offers = {
-			trait_type: self._claim_offer(trait_pool.traits[trait_type], trait_type.offer_count)
+			trait_type.name: self._claim_offer(trait_pool.traits[trait_type.name], trait_type.offer_count)
 			for trait_type in trait_types
 		}
-		self.picks = {trait_type: [] for trait_type in trait_types}
+		self.picks = {trait_type.name: [] for trait_type in trait_types}
 		self.name = ""
 		self.desc = ""
 
 	def is_submitted(self):
-		return all(len(self.picks[tt]) == tt.pick_count for tt in trait_types)
+		return all(len(self.picks[tt.name]) == tt.pick_count for tt in trait_types)
 	
 	def is_ready(self):
 		return self.name and self.desc
@@ -297,7 +276,7 @@ class Character:
 		sheet = ""
 		for trait_type in trait_types:
 			sheet += f"{trait_type.name.capitalize()}:\n"
-			for i, pick in enumerate(self.picks[trait_type]):
+			for i, pick in enumerate(self.picks[trait_type.name]):
 				sheet += f"{i+1}. {pick}\n"
 		return sheet.strip()
 
@@ -306,21 +285,21 @@ class Character:
 			raise ValueError("Already submitted.")
 
 		for trait_type in trait_types:
-			assert len(self.picks[trait_type]) == 0, "Unexpected picks state."
+			assert len(self.picks[trait_type.name]) == 0, "Unexpected picks state."
 
 			picks = trait_picks[trait_type.name]
 			picks = list(dict.fromkeys(picks))
 			if len(picks) != trait_type.pick_count:
 				raise ValueError(f"Invalid trait picks. picks: {trait_picks[trait_type.name]} pick_count: {trait_type.pick_count}")
 
-			offer = self.offers[trait_type]
+			offer = self.offers[trait_type.name]
 			for pick in picks:
 				if pick < 0 or pick >= len(offer):
 					raise ValueError("Invalid trait picks.")
 				
 		for trait_type in trait_types:
 			picks = trait_picks[trait_type.name]
-			offer = self.offers[trait_type]
+			offer = self.offers[trait_type.name]
 			for pick in picks:
 				self._pick_trait(trait_type, offer[pick])
 				
@@ -332,9 +311,9 @@ class Character:
 			raise
 
 	def _pick_trait(self, trait_type, trait):
-		assert trait not in self.picks[trait_type]
-		assert len(self.picks[trait_type]) < trait_type.pick_count
-		self.picks[trait_type].append(trait)
+		assert trait not in self.picks[trait_type.name]
+		assert len(self.picks[trait_type.name]) < trait_type.pick_count
+		self.picks[trait_type.name].append(trait)
 
 	def _claim_offer(self, traits, n):
 		unclaimed_traits = [trait for trait in traits if not trait.chr]

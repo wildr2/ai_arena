@@ -56,7 +56,7 @@ class Game:
 				"name": trait_type.name,
 				"plural_name": trait_type.plural_name,
 				"pick_count": trait_type.pick_count,
-				"traits": [trait.desc for trait in user.chr.offers[trait_type]]
+				"traits": [trait.desc for trait in user.chr.offers[trait_type.name]]
 			}
 			for trait_type in trait_types
 		}
