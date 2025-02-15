@@ -19,6 +19,8 @@ model_name = {
 	"openai": "mistralai/mistral-small-24b-instruct-2501:free",
 }[provider]
 ollama_context_length = 1024
+openai_retry_count = 3
+openai_retry_delay_seconds = 1
 
 debug_log = False
 debug_no_model = False
@@ -51,7 +53,7 @@ trait_types = [
 		"weaknesses",
 		gen_count = 5,
 		offer_count = 2,
-		pick_count = 0,
+		pick_count = 1,
 		prompt = """Give me a choice of {0} fantasy character weaknesses. Weakness descriptions should be specific and brief (just a few words), for instance "you are terrible at throwing". Weaknesses can range from crippling, for instance "you are blind", to underwhelming or funny, for instance "you are allergic to peanuts". Do not assume that the character can use magic, or has a sword, etc. Don't use exactly the above examples."""
 	),
 	TraitType(
@@ -59,7 +61,7 @@ trait_types = [
 		"items",
 		gen_count = 5,
 		offer_count = 3,
-		pick_count = 0,
+		pick_count = 1,
 		prompt = """Give me a choice of {0} equipment a fantasy character could take into battle. Item descriptions should be specific and brief (just a few words), for instance "magic boots that make you run faster". Descriptions should not contain numbers. Items can range from powerful, for instance "a flaming sword", to underwhelming or funny, for instance "a pointy stick". Don't use exactly the above examples."""
 	)
 ]
@@ -101,13 +103,22 @@ class OpenAIGenerator(Generator):
 		)
 
 	def generate(self, prompt, options: Generator.Options):
+		content = ""
 		start_time = time.time()
-		response = self.client.chat.completions.create(
-			model=self.model_name,
-			messages=[{"role": "user", "content": prompt}],
-			temperature=options.temperature
-		)
-		content = response.choices[0].message.content
+		for i in range(openai_retry_count):
+			response = self.client.chat.completions.create(
+				model=self.model_name,
+				messages=[{"role": "user", "content": prompt}],
+				temperature=options.temperature
+			)
+			try:
+				content = response.choices[0].message.content
+				break
+			except:
+				error = response.model_extra["error"]
+				print(f"OpenAIGenerator error (attempt {i+1}/{openai_retry_count}): ", error)
+				time.sleep(openai_retry_delay_seconds)
+
 		elapsed = time.time() - start_time
 		return content, elapsed
 
