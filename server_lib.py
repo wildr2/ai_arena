@@ -1,24 +1,31 @@
 import ollama
-from ollama import ChatResponse
+from openai import OpenAI
 import time
 import re
-from pprint import pprint, pformat
 import random
 import pickle
+from dataclasses import dataclass
+
+# Create api_keys.py locally.
+import api_keys
 
 chr_count = 2
-ollama_model_name = "llama3.2:3b-instruct-q4_K_M"
-# ollama_model_name = "llama3.1:8b-instruct-q4_K_M"
-model_context_length = 1024
+provider = "openai"
+model_name = {
+	"ollama": "llama3.2:3b-instruct-q4_K_M",
+	# "openai": "cognitivecomputations/dolphin3.0-mistral-24b:free"
+	# "openai": "deepseek/deepseek-r1-distill-llama-70b:free",
+	"openai": "mistralai/mistral-small-24b-instruct-2501:free",
+}[provider]
+ollama_context_length = 1024
+
 debug_log = False
-debug_no_model = True
-use_dummy_trait_data = True
+debug_no_model = False
+use_dummy_trait_data = False
 dummy_trait_data_path = "dummy_data/dummy_trait_pool.pkl"
 
-prompt_chr_desc = """{0}\n\nThe above describes a character that will be forced to fight in the arena, despite having limited if any fighting experience. In second person tense, give the character a name (not too pretentious) and provide a concise summary of their abilities, weaknesses, and equipment."""
-
-prompt_fight = """{0}The above {1} characters will now be forced to fight to the death in the arena until only one is left alive. Give a concise blow-by-blow account of what happens and who survives. Assume the reader is not familiar with the characters. Use present tense, and refer to characters in third person."""
-# prompt_fight = """{0}Suppose the above {1} characters were forced to fight to the death in the arena. Who would survive? Show your work."""
+prompt_chr_desc = """{0}\n\nThe above describes a character that will be forced to fight in the arena. Assume nothing that isn't described above. In second person tense, give the character a name and provide a very short summary of them. Begin with 'You are <name>'."""
+prompt_fight = """{0}The above {1} characters will now be forced to fight to the death in the arena. Do not assume they are skilled fighters or that there abilities will be useful, rely only on the above descriptions. In present tense, give a very short account of what happens and who survives. Assume the reader is not familiar with the characters."""
 
 class TraitType:
 	def __init__(self, name, plural_name, gen_count, offer_count, pick_count, prompt):
@@ -36,26 +43,82 @@ trait_types = [
 		gen_count = 5,
 		offer_count = 3,
 		pick_count = 1,
-		prompt = """Give me a choice of {0} fantasy character abilities. Ability descriptions should be specific and brief (just a few words), for example "you can win any debate". There should be a range of abilities from powerful, for example "you can summon a bolt of lightning", to underwhelming and potentially funny, for instance "you can do a forward roll". Don't use exactly the above examples."""
+		prompt = """Give me a choice of {0} fantasy character abilities. Ability descriptions should be specific and brief (just a few words), for example "you can win any debate". There should be a range of abilities from powerful, for example "you can summon a bolt of lightning", to underwhelming or funny, for instance "you can do a forward roll". Don't use exactly the above examples."""
 	),
 	TraitType(
 		"weakness",
 		"weaknesses",
 		gen_count = 5,
 		offer_count = 2,
-		pick_count = 1,
-		prompt = """Give me a choice of {0} fantasy character weaknesses. Weakness descriptions should be specific and brief (just a few words), for instance "you are terrible at throwing". Weaknesses can range from crippling, for instance "you are blind", to underwhelming and potentially funny, for instance "you are allergic to peanuts". Do not assume that the character can use magic, or has a sword, etc. Don't use exactly the above examples."""
+		pick_count = 0,
+		prompt = """Give me a choice of {0} fantasy character weaknesses. Weakness descriptions should be specific and brief (just a few words), for instance "you are terrible at throwing". Weaknesses can range from crippling, for instance "you are blind", to underwhelming or funny, for instance "you are allergic to peanuts". Do not assume that the character can use magic, or has a sword, etc. Don't use exactly the above examples."""
 	),
 	TraitType(
 		"item",
 		"items",
 		gen_count = 5,
 		offer_count = 3,
-		pick_count = 1,
-		prompt = """Give me a choice of {0} equipment a fantasy character could take into battle. Item descriptions should be specific and brief (just a few words), for instance "magic boots that make you run faster". Descriptions should not contain numbers. Items can range from powerful, for instance "a flaming sword", to underwhelming and potentially funny, for instance "a pointy stick". Don't use exactly the above examples."""
+		pick_count = 0,
+		prompt = """Give me a choice of {0} equipment a fantasy character could take into battle. Item descriptions should be specific and brief (just a few words), for instance "magic boots that make you run faster". Descriptions should not contain numbers. Items can range from powerful, for instance "a flaming sword", to underwhelming or funny, for instance "a pointy stick". Don't use exactly the above examples."""
 	)
 ]
 trait_types = [tt for tt in trait_types if tt.pick_count > 0]
+
+class Generator():
+	@dataclass(kw_only=True)
+	class Options():
+		temperature: float = 0.9
+		
+	def __init__(self, model_name):
+		self.model_name = model_name
+
+	def generate(self, prompt, options: Options):
+		pass
+
+class OllamaGenerator(Generator):
+	def __init__(self, model_name, context_length):
+		super().__init__(model_name)
+		self.context_length = context_length
+
+	def generate(self, prompt, options: Generator.Options):
+		start_time = time.time()
+		response: ollama.ChatResponse = ollama.generate(
+			model=self.model_name,
+			prompt=prompt,
+			options={"num_ctx": self.context_length, "temperature": options.temperature}
+		)
+		content = response.response
+		elapsed = time.time() - start_time
+		return content, elapsed
+
+class OpenAIGenerator(Generator):
+	def __init__(self, model_name, api_key):
+		super().__init__(model_name)
+		self.client = OpenAI(
+			base_url="https://openrouter.ai/api/v1",
+			api_key=api_key
+		)
+
+	def generate(self, prompt, options: Generator.Options):
+		start_time = time.time()
+		response = self.client.chat.completions.create(
+			model=self.model_name,
+			messages=[{"role": "user", "content": prompt}],
+			temperature=options.temperature
+		)
+		content = response.choices[0].message.content
+		elapsed = time.time() - start_time
+		return content, elapsed
+
+def create_generator():
+	if provider == "ollama":
+		return OllamaGenerator(model_name, ollama_context_length)
+	elif provider == "openai":
+		return OpenAIGenerator(model_name, api_keys.openai_api_key)
+	else:
+		raise ValueError(f"Unknown provider: {provider}")
+
+generator = create_generator()
 
 def log_header(header):
 	print(header.center(60, "-"))
@@ -67,13 +130,10 @@ def gen_traits(trait_type, total_start_time):
 	traits = []
 	for i in range(chr_count):
 		formatted_prompt = trait_type.prompt.format(trait_type.gen_count)
-		start_time = time.time()
-		response: ChatResponse = ollama.generate(
-			model=ollama_model_name, 
-			prompt=formatted_prompt, 
-			options={"num_ctx": model_context_length, "repeat_penalty": 1.1, "temperature": 0.87})
-		content = response.response
-		elapsed = time.time() - start_time
+		options = Generator.Options(
+			temperature=0.87
+		)
+		content, elapsed = generator.generate(formatted_prompt, options)
 
 		if debug_log:
 			log_header(f"{trait_type.name.capitalize()} {time.strftime('%H:%M:%S', time.gmtime(elapsed))}")
@@ -105,13 +165,10 @@ def gen_chr_desc(chr):
 		return "You are..."
 	
 	formatted_prompt = prompt_chr_desc.format(chr.get_chr_sheet())
-	start_time = time.time()
-	response: ChatResponse = ollama.generate(
-		model=ollama_model_name, 
-		prompt=formatted_prompt, 
-		options={"num_ctx": model_context_length, "repeat_penalty": 1.1, "temperature": 0.85})
-	content = response.response
-	elapsed = time.time() - start_time 
+	options = Generator.Options(
+		temperature=0.85
+	)
+	content, elapsed = generator.generate(formatted_prompt, options)
 
 	if debug_log:
 		log_header(f"Character Description {time.strftime('%H:%M:%S', time.gmtime(elapsed))}")
@@ -125,17 +182,15 @@ def gen_fight_desc(chrs):
 		return "The crowd goes wild..."
 
 	chr_descs = ""
-	for i in range(len(chrs.list)):
-		chr_descs += f"Character {i+1}:\n{chrs.list[i].desc}\n\n"
-		# chr_descs += f"Character {i+1}:\n{chrs.list[i].get_chr_sheet()}\n\n" # missing chr name
-	formatted_prompt = prompt_fight.format(chr_descs, len(chrs.list))
-	start_time = time.time()
-	response: ChatResponse = ollama.generate(
-		model=ollama_model_name, 
-		prompt=formatted_prompt, 
-		options={"num_ctx": model_context_length, "repeat_penalty": 1.1, "temperature": 0.8})
-	content = response.response
-	elapsed = time.time() - start_time 
+	for i in range(len(chrs)):
+		chr_descs += f"Character {i+1}:\n{chrs[i].desc}\n\n"
+		# chr_descs += f"Character {i+1}:\n{chrs[i].get_chr_sheet()}\n\n" # missing chr name
+	formatted_prompt = prompt_fight.format(chr_descs, len(chrs))
+
+	options = Generator.Options(
+		temperature=0.8
+	)
+	content, elapsed = generator.generate(formatted_prompt, options)
 
 	if debug_log:
 		log_header(f"Fight {time.strftime('%H:%M:%S', time.gmtime(elapsed))}")

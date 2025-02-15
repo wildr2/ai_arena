@@ -54,6 +54,6 @@ else:
 
 input("Start the fight?")
 print("Preparing the arena...")
-fight_desc = gen_fight_desc(chrs)
+fight_desc = gen_fight_desc(chrs.list)
 log_header("Fight!")
 print(fight_desc)
