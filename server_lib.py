@@ -145,14 +145,15 @@ def gen_traits(trait_type, total_start_time):
 		for line in content.split("\n"):
 			text = re.sub(r"\d+\.\s*", "", line)
 			if text != line:
-				new_traits.append(Trait(text.strip()))
+				text = text.replace("*", "").strip()
+				new_traits.append(Trait(text))
 
 		if len(new_traits) != trait_type.gen_count:
 			print(f"{len(new_traits)} traits != {trait_type.gen_count}")
 			log_header(f"{trait_type.name.capitalize()} {time.strftime('%H:%M:%S', time.gmtime(elapsed))}")
 			print(content)
 			log_header("")
-			exit()
+			raise ValueError("Failed to generate traits.")
 			
 		traits.extend(new_traits)
 
@@ -237,7 +238,10 @@ class TraitPool:
 		self.traits = {}
 		start_time = time.time()
 		for trait_type in trait_types:
-			self.traits[trait_type.name] = gen_traits(trait_type, start_time)
+			try:
+				self.traits[trait_type.name] = gen_traits(trait_type, start_time)
+			except:
+				raise
 
 	def log(self):
 		log_header("Trait Pool")

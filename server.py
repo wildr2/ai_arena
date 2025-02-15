@@ -7,6 +7,7 @@ class User:
 		assert User.is_valid_username(username)
 		self.username = username
 		self.chr = Character(game.trait_pool)
+		self.seen_fight = False
 		
 	def is_valid_username(username):
 		return username and len(username) > 0 and len(username) <= 16
@@ -16,7 +17,10 @@ class User:
 
 class Game:
 	def __init__(self):
-		self.trait_pool = create_trait_pool()
+		try:
+			self.trait_pool = create_trait_pool()
+		except:
+			raise
 		self.users = {}
 		self.max_users = chr_count
 		self.fight_desc = ""
@@ -42,6 +46,9 @@ class Game:
 	
 	def get_ready_users_count(self):
 		return len(self.get_ready_users())
+
+	def is_complete(self):
+		return len(self.users) == self.max_users and all(user.seen_fight for user in self.users.values())
 
 	def try_start_fight(self):
 		try:
@@ -77,9 +84,6 @@ class Game:
 			"fight_desc": self.fight_desc
 		})
 
-
-game = Game()
-
 app = Flask(__name__)
 cors = CORS(app)
 app.config["CORS_HEADERS"] = "Content-Type"
@@ -93,7 +97,7 @@ def connect():
 	
 	user = game.get_user(username)
 	print(f"connection: username='{username}'{' (existing)' if user else ''}")
-
+	
 	if username == "":
 		# Spectator.
 		return game.get_response_arena(None)
@@ -104,6 +108,17 @@ def connect():
 			"status": "error",
 			"error": "Invalid username. Usernames must be between 1 and 16 characters in length."
 		})
+
+	if game.is_complete():
+		# New game!
+		try:
+			game = Game()
+		except Exception as e:
+			print(f"Failed to create game:", e)
+			return jsonify({
+				"status": "error",
+				"error": "Failed to start game."
+			})
 
 	user = game.add_get_user(username)
 	if not user:
@@ -125,6 +140,8 @@ def connect():
 	# Generate fight if ready.
 	# (might have just finished chr generation, or might have failed to generate fight earlier)
 	game.try_start_fight()
+	if game.fight_desc:
+		user.seen_fight = True
 			
 	return game.get_response_arena(user)
 
@@ -162,8 +179,11 @@ def create_character():
 		})
 		
 	game.try_start_fight()
+	if game.fight_desc:
+		user.seen_fight = True
 
 	return game.get_response_arena(user)
 
 if __name__ == "__main__":
+	game = Game()
 	app.run(host="0.0.0.0", port=5000)
