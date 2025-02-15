@@ -384,6 +384,21 @@
 		}
 
 		function onCreationCheckboxChange(event) {
+			// If one one of this trait should be picked, uncheck other checkboxes.
+			if (event.target.checked) {
+				const traitGroup = event.target.closest(".trait-group");
+				const traitType = traitGroup.id.replace("Group", "");
+				const pickCount = creationData.trait_offers[traitType].pick_count;
+				if (pickCount == 1) {
+					const checkboxes = traitGroup.querySelectorAll('.trait-checkbox-input');
+					checkboxes.forEach(checkbox => {
+						if (checkbox != event.target) {
+							checkbox.checked = false;
+						}
+					});
+				}
+			}
+
 			updateSubmitChrButton();
 		}
 		
