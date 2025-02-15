@@ -27,7 +27,8 @@ debug_no_model = False
 use_dummy_trait_data = False
 dummy_trait_data_path = "dummy_data/dummy_trait_pool.pkl"
 
-prompt_chr_desc = """{0}\n\nThe above describes a character that will be forced to fight in the arena. Assume nothing that isn't described above. In second person tense, give the character a name and provide a very short summary of them. Begin with 'You are <name>'."""
+# prompt_chr_desc = """{0}\n\nThe above describes a character that will be forced to fight in the arena. Assume nothing that isn't described above. In second person tense, give the character a name and provide a very short summary of them. Begin with 'You are <name>'."""
+prompt_chr_desc = """{0}\n\nThe above describes a character. In second person tense, give the character a name and provide a very short summary of them. Begin with 'You are <name>'."""
 prompt_fight = """{0}The above {1} characters will now be forced to fight to the death in the arena. Do not assume they are skilled fighters or that there abilities will be useful, rely only on the above descriptions. In present tense, give a very short account of what happens and who survives. Assume the reader is not familiar with the characters."""
 
 class TraitType:
@@ -46,7 +47,7 @@ trait_types = [
 		gen_count = 5,
 		offer_count = 3,
 		pick_count = 1,
-		prompt = """Give me a choice of {0} fantasy character abilities. Ability descriptions should be specific and brief (just a few words), for example "you can win any debate". There should be a range of abilities from powerful, for example "you can summon a bolt of lightning", to underwhelming or funny, for instance "you can do a forward roll". Don't use exactly the above examples."""
+		prompt = """Generate a numbered list of {0} fantasy character abilities. Ability descriptions should be specific and brief (just a few words), for example "you can win any debate". There should be a range of abilities from powerful, for example "you can summon a bolt of lightning", to underwhelming or funny, for instance "you can do a forward roll". Don't use exactly the above examples."""
 	),
 	TraitType(
 		"weakness",
@@ -54,7 +55,7 @@ trait_types = [
 		gen_count = 5,
 		offer_count = 2,
 		pick_count = 1,
-		prompt = """Give me a choice of {0} fantasy character weaknesses. Weakness descriptions should be specific and brief (just a few words), for instance "you are terrible at throwing". Weaknesses can range from crippling, for instance "you are blind", to underwhelming or funny, for instance "you are allergic to peanuts". Do not assume that the character can use magic, or has a sword, etc. Don't use exactly the above examples."""
+		prompt = """Generate a numbered list of {0} fantasy character weaknesses. Weakness descriptions should be specific and brief (just a few words), for instance "you are terrible at throwing". Weaknesses can range from crippling, for instance "you are blind", to underwhelming or funny, for instance "you are allergic to peanuts". Do not assume that the character can use magic, or has a sword, etc. Don't use exactly the above examples."""
 	),
 	TraitType(
 		"item",
@@ -62,7 +63,7 @@ trait_types = [
 		gen_count = 5,
 		offer_count = 3,
 		pick_count = 1,
-		prompt = """Give me a choice of {0} equipment a fantasy character could take into battle. Item descriptions should be specific and brief (just a few words), for instance "magic boots that make you run faster". Descriptions should not contain numbers. Items can range from powerful, for instance "a flaming sword", to underwhelming or funny, for instance "a pointy stick". Don't use exactly the above examples."""
+		prompt = """Generate a numbered list of {0} equipment a fantasy character could take into battle. Item descriptions should be specific and brief (just a few words), for instance "magic boots that make you run faster". Descriptions should not contain numbers. Items can range from powerful, for instance "a flaming sword", to underwhelming or funny, for instance "a pointy stick". Don't use exactly the above examples."""
 	)
 ]
 trait_types = [tt for tt in trait_types if tt.pick_count > 0]
