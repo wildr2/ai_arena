@@ -428,8 +428,6 @@
 			document.querySelector(".connect-container").style.display = "none";
 			document.getElementById("characterCreation").style.display = "none";
 			document.getElementById("arena").style.display = "block";
-			let templateData = data
-			templateData["ready_users_count"] = Object.keys(data["ready_users"]).length;
 
 			// Character description.
 			updateTemplate(".chr-desc p", data);
@@ -439,11 +437,12 @@
 
 			let serverStatsDiv = document.querySelector(".server-stats");
 			serverStatsDiv.querySelectorAll(".server-stats-user").forEach(x => x.remove());
-			for (let username in data["ready_users"]) {
+			for (let username in data["users"]) {
 				let userStat = document.createElement("div");
 				userStat.className = "server-stats-user";
-				let chr_name = data["ready_users"][username].chr_name;
-				userStat.textContent = `${chr_name} (${username})`;
+				let user_data = data["users"][username];
+				let chr_name = user_data.ready ? user_data.chr_name : "<i>pending</i>";
+				userStat.innerHTML = `${chr_name} (${username})`;
 				serverStatsDiv.appendChild(userStat);
 			}
 			
