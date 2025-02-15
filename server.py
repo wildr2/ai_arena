@@ -10,7 +10,7 @@ class User:
 		self.seen_fight = False
 		
 	def is_valid_username(username):
-		return username and len(username) > 0 and len(username) <= 16
+		return username and len(username) > 0 and len(username) <= 16 and all(c.isalnum() for c in username)
 	
 	def is_ready(self):
 		return self.chr.is_ready()
@@ -108,7 +108,7 @@ def connect():
 		print(f"invalid username: username='{username}'")
 		return jsonify({
 			"status": "error",
-			"error": "Invalid username. Usernames must be between 1 and 16 characters in length."
+			"error": "Invalid username. Usernames must be between 1 and 16 characters in length and contain no special characters."
 		})
 
 	if game.is_complete():
@@ -188,4 +188,4 @@ def create_character():
 
 if __name__ == "__main__":
 	game = Game()
-	app.run(host="0.0.0.0", port=5000)
+	app.run(host="0.0.0.0", port=5002)
