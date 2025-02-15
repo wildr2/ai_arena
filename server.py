@@ -66,7 +66,9 @@ class Game:
 		return jsonify({
 			"status": "arena",
 			"chr_desc": chr_desc,
-			"ready_users": {user.username: user.chr.name for user in self.get_ready_users()},
+			"ready_users": {user.username: {
+				"chr_name": user.chr.name
+			 } for user in self.get_ready_users()},
 			"max": self.max_users,
 			"fight_desc": self.fight_desc
 		})

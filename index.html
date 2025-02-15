@@ -7,7 +7,7 @@
 	<title>Welcome to the Arena</title>
 	<style>
 		body {
-			font-family: "Roboto", sans-serif;
+			font-family: "Consolas";
 			background-color: #111;
 			color: #fff;
 		}
@@ -49,6 +49,7 @@
 			border: none;
 			border-radius: 3px;
 			cursor: pointer;
+			font-family: inherit;
 		}
 		button:hover {
 			background-color: #3b3b6e;
@@ -97,7 +98,14 @@
 			padding: 10px;
 			margin: 20px 0;
 			border-radius: 3px;
-			color: #fff;
+			color: #ccc;
+		}
+		.server-stats-header {
+			margin: 0px 0px 5px 0px;
+		}
+		.server-stats-user {
+			margin: 0px 0px 0px 10px;
+			font-size: 0.9em;
 		}
 		.reveal-fight-btn {
 			width: 100%;
@@ -145,7 +153,6 @@
 			100% { transform: rotate(360deg); }
 		}
 	</style>
-	<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
 	<div class="loading-spinner-overlay">
@@ -180,7 +187,7 @@
 				<p data-template="{chr_desc}"></p>
 			</div>
 			<div class="server-stats">
-				<p data-template="{ready_users_count}/{max} contestants have entered the arena"></p>
+				<p class="server-stats-header" data-template="{ready_users_count}/{max} contestants have entered the arena"></p>
 			</div>
 			<button class="reveal-fight-btn" onclick="onRevealFightButton(event)">Fight</button>
 			<div class="fight-desc">
@@ -405,14 +412,28 @@
 			document.querySelector(".connect-container").style.display = "none";
 			document.getElementById("characterCreation").style.display = "none";
 			document.getElementById("arena").style.display = "block";
-			templateData = data
+			let templateData = data
 			templateData["ready_users_count"] = Object.keys(data["ready_users"]).length;
 
+			// Character description.
+			updateTemplate(".chr-desc p", data);
+
+			// Server stats.
+			updateTemplate(".server-stats p", data);
+
+			let serverStatsDiv = document.querySelector(".server-stats");
+			serverStatsDiv.querySelectorAll(".server-stats-user").forEach(x => x.remove());
+			for (let username in data["ready_users"]) {
+				let userStat = document.createElement("div");
+				userStat.className = "server-stats-user";
+				let chr_name = data["ready_users"][username].chr_name;
+				userStat.textContent = `${chr_name} (${username})`;
+				serverStatsDiv.appendChild(userStat);
+			}
+			
+			// Fight description.
 			document.querySelector(".reveal-fight-btn").style.display = data["fight_desc"] ? "block" : "none";
 			document.querySelector(".fight-desc").style.display = "none";
-
-			updateTemplate(".chr-desc p", data);
-			updateTemplate(".server-stats p", data);
 			updateTemplate(".fight-desc p", data);
 		}
 		
