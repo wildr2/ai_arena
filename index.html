@@ -99,6 +99,11 @@
 			border-radius: 3px;
 			color: #fff;
 		}
+		.reveal-fight-btn {
+			width: 100%;
+			margin: 20px 0px 20px;
+			padding: 20px;
+		}
 		.loading-spinner-overlay {
 			display: none;
 			position: fixed;
@@ -177,6 +182,7 @@
 			<div class="server-stats">
 				<p data-template="{ready_users_count}/{max} contestants have entered the arena"></p>
 			</div>
+			<button class="reveal-fight-btn" onclick="onRevealFightButton(event)">Fight</button>
 			<div class="fight-desc">
 				<p data-template="{fight_desc}"></p>
 			</div>
@@ -223,6 +229,11 @@
 				return;
 			}
 			connect(serverUrl, username);
+		}
+
+		function onRevealFightButton(e) {
+			e.target.style.display = "none";
+			document.querySelector(".fight-desc").style.display = "block";
 		}
 
 		function connect(serverUrl, username) {
@@ -331,7 +342,7 @@
 				showTraitOffer(data.trait_offers[trait_type], parentDiv)
 			}
 
-			updateSubmitChrBtn();
+			updateSubmitChrButton();
 		}
 
 		function showTraitOffer(offer, parentDiv) {
@@ -365,7 +376,7 @@
 		}
 
 		function onCreationCheckboxChange(event) {
-			updateSubmitChrBtn();
+			updateSubmitChrButton();
 		}
 		
 		function getCharacterCreationPicks(traitType) {
@@ -384,7 +395,7 @@
 			return true;
 		}
 
-		function updateSubmitChrBtn() {
+		function updateSubmitChrButton() {
 			const submitButton = document.getElementById("submitChrBtn");
 			let canSubmit = canSubmitCharacterCreation();
 			submitButton.disabled = !canSubmit;
@@ -395,7 +406,11 @@
 			document.getElementById("characterCreation").style.display = "none";
 			document.getElementById("arena").style.display = "block";
 			templateData = data
-			templateData["ready_users_count"] = Object.keys(data["ready_users"]).length
+			templateData["ready_users_count"] = Object.keys(data["ready_users"]).length;
+
+			document.querySelector(".reveal-fight-btn").style.display = data["fight_desc"] ? "block" : "none";
+			document.querySelector(".fight-desc").style.display = "none";
+
 			updateTemplate(".chr-desc p", data);
 			updateTemplate(".server-stats p", data);
 			updateTemplate(".fight-desc p", data);
