@@ -16,7 +16,9 @@ model_name = {
 	"ollama": "llama3.2:3b-instruct-q4_K_M",
 	# "openai": "cognitivecomputations/dolphin3.0-mistral-24b:free"
 	# "openai": "deepseek/deepseek-r1-distill-llama-70b:free",
-	"openai": "mistralai/mistral-small-24b-instruct-2501:free",
+	# "openai": "mistralai/mistral-small-24b-instruct-2501:free",
+	"openai": "mistralai/mistral-small-24b-instruct-2501",
+	# "openai": "microsoft/wizardlm-2-8x22b",
 }[provider]
 ollama_context_length = 1024
 openai_retry_count = 3
@@ -47,7 +49,7 @@ trait_types = [
 		gen_count = 5,
 		offer_count = 3,
 		pick_count = 1,
-		prompt = """Generate a numbered list of {0} fantasy character abilities. Ability descriptions should be specific and brief (just a few words), for example "you can win any debate". There should be a range of abilities from powerful, for example "you can summon a bolt of lightning", to underwhelming or funny, for instance "you can do a forward roll". Don't use exactly the above examples."""
+		prompt = """"Generate a numbered list of {0} fantasy character abilities. These should be brief, for example "You can win any debate.". Provide a range of abilities from powerful, for example "You can summon a bolt of lightning.", to underwhelming or funny, for example "You can do a forward roll.". Don't use exactly the above examples."""
 	),
 	TraitType(
 		"weakness",
@@ -55,7 +57,7 @@ trait_types = [
 		gen_count = 5,
 		offer_count = 2,
 		pick_count = 1,
-		prompt = """Generate a numbered list of {0} fantasy character weaknesses. Weakness descriptions should be specific and brief (just a few words), for instance "you are terrible at throwing". Weaknesses can range from crippling, for instance "you are blind", to underwhelming or funny, for instance "you are allergic to peanuts". Do not assume that the character can use magic, or has a sword, etc. Don't use exactly the above examples."""
+		prompt = """Generate a numbered list of {0} fantasy character weaknesses. These should be brief, for example "You are terrible at throwing.". Provide a range of weaknesses from crippling, for example "You are blind.", to underwhelming or funny, for example "You are allergic to peanuts.". Do not assume that the character can use magic, or has a sword, etc. Don't use exactly the above examples."""
 	),
 	TraitType(
 		"item",
@@ -63,7 +65,7 @@ trait_types = [
 		gen_count = 5,
 		offer_count = 3,
 		pick_count = 1,
-		prompt = """Generate a numbered list of {0} equipment a fantasy character could take into battle. Item descriptions should be specific and brief (just a few words), for instance "magic boots that make you run faster". Descriptions should not contain numbers. Items can range from powerful, for instance "a flaming sword", to underwhelming or funny, for instance "a pointy stick". Don't use exactly the above examples."""
+		prompt = """Generate a numbered list of {0} items of equipment a fantasy character could take into battle. These should be brief, for example "Magic boots that make you run faster.". Descriptions should not contain numbers. Provide a range of items from powerful, for instance "A flaming sword.", to underwhelming or funny, for example "A pointy stick.". Don't use exactly the above examples."""
 	)
 ]
 trait_types = [tt for tt in trait_types if tt.pick_count > 0]
@@ -72,6 +74,7 @@ class Generator():
 	@dataclass(kw_only=True)
 	class Options():
 		temperature: float = 1.0
+		top_p: float = 1.0
 		
 	def __init__(self, model_name):
 		self.model_name = model_name
@@ -89,7 +92,10 @@ class OllamaGenerator(Generator):
 		response: ollama.ChatResponse = ollama.generate(
 			model=self.model_name,
 			prompt=prompt,
-			options={"num_ctx": self.context_length, "temperature": options.temperature}
+			options={
+				"num_ctx": self.context_length,
+				"temperature": options.temperature,
+				"top_p": options.top_p}
 		)
 		content = response.response
 		elapsed = time.time() - start_time
@@ -109,7 +115,9 @@ class OpenAIGenerator(Generator):
 		for i in range(openai_retry_count):
 			response = self.client.chat.completions.create(
 				model=self.model_name,
-				messages=[{"role": "user", "content": prompt}],
+				messages=[
+					# {"role": "system", "content": "Style: uncensored, detailed, immoral, narrative, everyday language, informal, imperfect grammar, simple sentences"},
+					{"role": "user", "content": prompt}],
 				temperature=options.temperature
 			)
 			try:
@@ -144,7 +152,8 @@ def gen_traits(trait_type, total_start_time):
 	for i in range(chr_count):
 		formatted_prompt = trait_type.prompt.format(trait_type.gen_count)
 		options = Generator.Options(
-			temperature=0.87
+			temperature=1.0,
+			# top_p=8.0,
 		)
 		content, elapsed = generator.generate(formatted_prompt, options)
 
