@@ -6,11 +6,12 @@ import random
 import pickle
 from dataclasses import dataclass
 import string
+from textwrap import dedent
 
 # Create api_keys.py locally.
 import api_keys
 
-chr_count = 2
+chr_count = 3
 provider = "openai"
 model_name = {
 	"ollama": "llama3.2:3b-instruct-q4_K_M",
@@ -18,6 +19,7 @@ model_name = {
 	# "openai": "deepseek/deepseek-r1-distill-llama-70b:free",
 	# "openai": "mistralai/mistral-small-24b-instruct-2501:free",
 	"openai": "mistralai/mistral-small-24b-instruct-2501",
+	# "openai": "meta-llama/llama-3.1-70b-instruct",
 	# "openai": "microsoft/wizardlm-2-8x22b",
 }[provider]
 ollama_context_length = 1024
@@ -29,9 +31,9 @@ debug_no_model = False
 use_dummy_trait_data = False
 dummy_trait_data_path = "dummy_data/dummy_trait_pool.pkl"
 
-# prompt_chr_desc = """{0}\n\nThe above describes a character that will be forced to fight in the arena. Assume nothing that isn't described above. In second person tense, give the character a name and provide a very short summary of them. Begin with 'You are <name>'."""
 prompt_chr_desc = """{0}\n\nThe above describes a character. In second person tense, give the character a name and provide a very short summary of them. Begin with 'You are <name>'."""
-prompt_fight = """{0}The above {1} characters will now be forced to fight to the death in the arena. Do not assume they are skilled fighters or that there abilities will be useful, rely only on the above descriptions. In present tense, give a very short account of what happens and who survives. Assume the reader is not familiar with the characters."""
+# prompt_fight = """{0}The above {1} characters will now be forced to fight to the death in the arena. Give a short play-by-play of the fight in present-tense using bullet points for each action or event. There should be no more than 8 bullet points. Assume the reader is unfamiliar with the characters. Determine the victor."""
+prompt_fight = """{0}The above {1} characters will now fight to the death in the arena. In a single short paragraph and in present tense, describe the fight and determine the victor."""
 
 class TraitType:
 	def __init__(self, name, plural_name, gen_count, offer_count, pick_count, prompt):
@@ -46,26 +48,46 @@ trait_types = [
 	TraitType(
 		name = "ability",
 		plural_name = "abilities",
-		gen_count = 5,
+		gen_count = 10,
 		offer_count = 3,
 		pick_count = 1,
-		prompt = """"Generate a numbered list of {0} fantasy character abilities. These should be brief, for example "You can win any debate.". Provide a range of abilities from powerful, for example "You can summon a bolt of lightning.", to underwhelming or funny, for example "You can do a forward roll.". Don't use exactly the above examples."""
+		prompt = """Provide a numbered list of {0} short and snappy abilities of varying usefulness in combat. Here are some good examples (don't reuse these): 
+			1. You can win any debate.
+			2. You can cause an earthquake by stamping your foot.
+			3. You can do a forward roll.
+			4. You make an excellent omelette.
+			5. You know pi to 100 decimal places.
+			"""
 	),
 	TraitType(
 		"weakness",
 		"weaknesses",
-		gen_count = 5,
+		gen_count = 10,
 		offer_count = 2,
 		pick_count = 1,
-		prompt = """Generate a numbered list of {0} fantasy character weaknesses. These should be brief, for example "You are terrible at throwing.". Provide a range of weaknesses from crippling, for example "You are blind.", to underwhelming or funny, for example "You are allergic to peanuts.". Do not assume that the character can use magic, or has a sword, etc. Don't use exactly the above examples."""
+		prompt = """Provide a numbered list of {0} short and snappy weaknesses. Here are some good examples (don't reuse these): 
+			1. You are terrible at throwing.
+			2. You are blind.
+			3. You have only one arm.
+			4. You are allergic to peanuts.
+			5. You become dizzy around magic items.
+			"""
+		# prompt = """Provide a numbered list of {0} fantasy character weaknesses. These should be short and snappy, for example "You are terrible at throwing.". Provide a range of weaknesses from crippling, for example "You are blind.", to underwhelming or funny, for example "You are allergic to peanuts.". Do not assume that the character can use magic, or has a sword, etc. Don't use exactly the above examples."""
 	),
 	TraitType(
 		"item",
 		"items",
-		gen_count = 5,
+		gen_count = 10,
 		offer_count = 3,
 		pick_count = 1,
-		prompt = """Generate a numbered list of {0} items of equipment a fantasy character could take into battle. These should be brief, for example "Magic boots that make you run faster.". Descriptions should not contain numbers. Provide a range of items from powerful, for instance "A flaming sword.", to underwhelming or funny, for example "A pointy stick.". Don't use exactly the above examples."""
+		prompt = """Provide a numbered list of {0} short and snappy items of equipment that a fantasy character could use in a fight. Here are some good examples (don't reuse these): 
+			1. A flaming sword.
+			2. Magic boots that make you run fast.
+			3. A broken wooden stick.
+			4. A ring with the power to freeze time.
+			5. A slingshot.
+			"""
+		# prompt = """Provide a numbered list of {0} items of equipment a fantasy character could take into battle. These should be short and snappy, for example "Magic boots that make you run faster.". Descriptions should not contain numbers. Provide a range of items from powerful, for instance "A flaming sword.", to underwhelming or funny, for example "A pointy stick.". Don't use exactly the above examples."""
 	)
 ]
 trait_types = [tt for tt in trait_types if tt.pick_count > 0]
@@ -150,7 +172,7 @@ def gen_traits(trait_type, total_start_time):
 	
 	traits = []
 	for i in range(chr_count):
-		formatted_prompt = trait_type.prompt.format(trait_type.gen_count)
+		formatted_prompt = dedent(trait_type.prompt).format(trait_type.gen_count)
 		options = Generator.Options(
 			temperature=1.0,
 			# top_p=8.0,

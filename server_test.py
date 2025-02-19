@@ -1,7 +1,7 @@
 from server_lib import *
 
 write_dummy_trait_data = False
-use_dummy_chr_data = False
+use_dummy_chr_data = True
 write_dummy_chr_data = False
 dummy_chr_data_path = "dummy_data/dummy_chr_list.pkl"
 
